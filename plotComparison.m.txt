@@ -1,0 +1,79 @@
+function fig = plotComparison( ...
+    rmaImage, rmaRangeAxis, rmaAzimuthAxis, ...
+    bpaImage, bpaRangeAxis, bpaAzimuthAxis, ...
+    rmaDetectionTable, bpaDetectionTable, ...
+    simulationTime, rangeCompressionTime, rmaTime, bpaTime, p)
+% plotComparison
+% Displays side-by-side RMA and BPA images plus timing/error comparison.
+
+fig = figure( ...
+    'Name', 'Figure 6 - RMA versus BPA Comparison', ...
+    'Color', 'w', ...
+    'Position', [200 100 1300 780]);
+
+tiledlayout(2, 2, 'Padding', 'compact', 'TileSpacing', 'compact');
+
+nexttile;
+
+plotImagePanel( ...
+    rmaImage, rmaRangeAxis, rmaAzimuthAxis, ...
+    'RMA Focused Image', p);
+
+nexttile;
+
+plotImagePanel( ...
+    bpaImage, bpaRangeAxis, bpaAzimuthAxis, ...
+    'BPA Focused Image', p);
+
+nexttile;
+
+methodNames = categorical( ...
+    {'Simulation', 'Range compression', 'RMA', 'BPA'});
+
+processingTimes = [ ...
+    simulationTime, rangeCompressionTime, rmaTime, bpaTime];
+
+bar(methodNames, processingTimes, 0.6, ...
+    'FaceColor', [0.2 0.45 0.75]);
+
+grid on;
+ylabel('Processing Time (s)');
+title('Processing-Time Comparison');
+set(gca, 'FontSize', 10);
+
+nexttile;
+
+targetLabels = categorical(cellstr(rmaDetectionTable.Target));
+targetLabels = reordercats(targetLabels, cellstr(rmaDetectionTable.Target));
+
+errorValues = [ ...
+    rmaDetectionTable.PositionError_m, ...
+    bpaDetectionTable.PositionError_m];
+
+bar(targetLabels, errorValues, 'grouped');
+
+grid on;
+ylabel('Position Error (m)');
+title('Target Localization Error');
+legend('RMA', 'BPA', 'Location', 'northwest');
+set(gca, 'FontSize', 10);
+
+end
+
+function plotImagePanel(imageData, rangeAxis, azimuthAxis, titleText, p)
+
+image_dB = 20 * log10(abs(imageData) + eps);
+maximumValue = max(image_dB(:));
+
+imagesc(azimuthAxis, rangeAxis, image_dB);
+axis xy;
+colormap turbo;
+colorbar;
+caxis([maximumValue - p.imageDynamicRange_dB, maximumValue]);
+
+xlabel('Along-track (m)');
+ylabel('Ground-range (m)');
+title(titleText);
+set(gca, 'FontSize', 10);
+
+end

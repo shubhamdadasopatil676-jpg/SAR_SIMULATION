@@ -1,0 +1,16 @@
+STRIPMAP SAR SIMULATION REPORT
+Generated: 19-Oct-2026 23:37:45
+
+Parameters
+  Carrier 4.00 GHz | sweep 50.0 MHz | pulse 3.0 us | fs 120 MHz
+  PRF 1000 Hz | speed 100 m/s | altitude 500 m | flight 4 s | antenna 2.0 m
+  Range window: hamming | azimuth window: rect | SNR per sample 10.0 dB
+
+Target results (widths are -3 dB; design values are c/2B and crossRes)
+T   True x,y [m]     Meas x,y [m]     Err [m]   Range IRW (design)     Cross IRW (design)   Rng PSLR  Crs PSLR 
+1   ( 800.0,  0.0)  ( 800.0,  0.0)  0.00       4.58 (3.54) m         2.66 (3.00) m        -0.4 dB  -14.4 dB
+2   (1000.0,  0.0)  (1000.5,  0.0)  0.50       4.53 (3.35) m         2.65 (3.00) m        -1.0 dB  -14.2 dB
+3   (1300.0,  0.0)  (1300.5,  0.0)  0.50       4.01 (3.21) m         2.62 (3.00) m        -1.1 dB  -14.1 dB
+4   (1100.0, 45.0)  (1100.0, 45.0)  0.00       4.14 (3.30) m         2.64 (3.00) m        -0.4 dB  -14.3 dB
+
+Run time: 33.7 s

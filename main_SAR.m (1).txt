@@ -1,0 +1,155 @@
+%% main_SAR.m
+% Synthetic Aperture Radar (SAR) Image Formation and Analysis Using MATLAB
+% Single project entry point.
+%
+% Required toolbox:
+%   Radar Toolbox
+%
+% MATLAB release:
+%   Tested by static API review for modern MATLAB releases including
+%   R2024b/R2025-generation syntax.
+%
+% NOTE:
+% This project has been statically reviewed but cannot be executed in a
+% MATLAB/Radar Toolbox runtime from this environment.
+
+clear;
+clc;
+close all;
+set(groot, 'DefaultFigureWindowStyle', 'docked');
+
+fprintf('============================================================\n');
+fprintf(' Synthetic Aperture Radar (SAR) Image Formation Project\n');
+fprintf('============================================================\n\n');
+
+projectRoot = fileparts(mfilename('fullpath'));
+if isempty(projectRoot)
+    projectRoot = pwd;
+end
+
+addpath(projectRoot);
+addpath(fullfile(projectRoot, 'config'));
+addpath(fullfile(projectRoot, 'simulation'));
+addpath(fullfile(projectRoot, 'processing'));
+addpath(fullfile(projectRoot, 'visualization'));
+
+resultsFolder = fullfile(projectRoot, 'results');
+if ~exist(resultsFolder, 'dir')
+    mkdir(resultsFolder);
+end
+
+fprintf('1. Loading SAR parameters...\n');
+p = sarParameters();
+
+fprintf('2. Creating platform trajectory...\n');
+platform = createSARPlatform(p);
+
+fprintf('3. Creating stationary point targets...\n');
+targets = createTargets(p);
+
+fprintf('4. Generating LFM waveform and matched filter...\n');
+waveformData = generateSARWaveform(p);
+
+fprintf('5. Plotting SAR geometry...\n');
+figGeometry = plotSARGeometry(platform, targets, p);
+
+fprintf('6. Simulating complex raw SAR echo data...\n');
+simulationStart = tic;
+rawData = simulateSARData(platform, targets, waveformData, p);
+simulationTime = toc(simulationStart);
+
+fprintf('7. Plotting raw SAR data...\n');
+figRaw = plotRawData(rawData, platform, p);
+
+fprintf('8. Performing matched-filter range compression...\n');
+rangeCompressionStart = tic;
+[rangeCompressedData, rangeAxis] = rangeCompression(rawData, waveformData, p);
+rangeCompressionTime = toc(rangeCompressionStart);
+
+fprintf('9. Plotting range-compressed SAR data...\n');
+figRangeCompressed = plotRangeCompressedData( ...
+    rangeCompressedData, rangeAxis, platform, p);
+
+fprintf('10. Forming RMA SAR image...\n');
+rmaStart = tic;
+[rmaImage, rmaRangeAxis, rmaAzimuthAxis] = ...
+    rmaImageFormation(rangeCompressedData, rangeAxis, platform, p);
+rmaTime = toc(rmaStart);
+
+fprintf('11. Forming BPA SAR image...\n');
+bpaStart = tic;
+[bpaImage, bpaRangeAxis, bpaAzimuthAxis] = ...
+    bpaImageFormation(rangeCompressedData, rangeAxis, platform, p);
+bpaTime = toc(bpaStart);
+
+fprintf('12. Detecting targets from RMA image...\n');
+rmaDetectionTable = detectTargets( ...
+    rmaImage, rmaRangeAxis, rmaAzimuthAxis, targets, p, 'RMA');
+
+fprintf('13. Detecting targets from BPA image...\n');
+bpaDetectionTable = detectTargets( ...
+    bpaImage, bpaRangeAxis, bpaAzimuthAxis, targets, p, 'BPA');
+
+fprintf('14. Plotting focused SAR images...\n');
+[figRMA, figBPA] = plotSARImages( ...
+    rmaImage, rmaRangeAxis, rmaAzimuthAxis, ...
+    bpaImage, bpaRangeAxis, bpaAzimuthAxis, ...
+    targets, rmaDetectionTable, bpaDetectionTable, p);
+
+fprintf('15. Creating RMA versus BPA comparison figure...\n');
+comparisonTable = table( ...
+    ["Raw-data simulation"; "Range compression"; "RMA image formation"; "BPA image formation"], ...
+    [simulationTime; rangeCompressionTime; rmaTime; bpaTime], ...
+    'VariableNames', {'Stage', 'ProcessingTime_s'});
+
+figComparison = plotComparison( ...
+    rmaImage, rmaRangeAxis, rmaAzimuthAxis, ...
+    bpaImage, bpaRangeAxis, bpaAzimuthAxis, ...
+    rmaDetectionTable, bpaDetectionTable, ...
+    simulationTime, rangeCompressionTime, rmaTime, bpaTime, p);
+
+fprintf('16. Saving figures and results...\n');
+
+saveas(figGeometry, fullfile(resultsFolder, 'Figure_1_SAR_Geometry.png'));
+saveas(figRaw, fullfile(resultsFolder, 'Figure_2_Raw_SAR_Data.png'));
+saveas(figRangeCompressed, ...
+    fullfile(resultsFolder, 'Figure_3_Range_Compressed_Data.png'));
+saveas(figRMA, fullfile(resultsFolder, 'Figure_4_RMA_SAR_Image.png'));
+saveas(figBPA, fullfile(resultsFolder, 'Figure_5_BPA_SAR_Image.png'));
+saveas(figComparison, ...
+    fullfile(resultsFolder, 'Figure_6_RMA_vs_BPA_Comparison.png'));
+
+save(fullfile(resultsFolder, 'SAR_Project_Results.mat'), ...
+    'p', 'platform', 'targets', 'waveformData', ...
+    'rawData', 'rangeCompressedData', 'rangeAxis', ...
+    'rmaImage', 'rmaRangeAxis', 'rmaAzimuthAxis', ...
+    'bpaImage', 'bpaRangeAxis', 'bpaAzimuthAxis', ...
+    'rmaDetectionTable', 'bpaDetectionTable', ...
+    'comparisonTable', ...
+    'simulationTime', 'rangeCompressionTime', 'rmaTime', 'bpaTime', ...
+    '-v7.3');
+
+writetable(rmaDetectionTable, ...
+    fullfile(resultsFolder, 'RMA_Target_Detections.csv'));
+
+writetable(bpaDetectionTable, ...
+    fullfile(resultsFolder, 'BPA_Target_Detections.csv'));
+
+writetable(comparisonTable, ...
+    fullfile(resultsFolder, 'Processing_Time_Comparison.csv'));
+
+fprintf('\n============================================================\n');
+fprintf(' PROJECT COMPLETED SUCCESSFULLY\n');
+fprintf('============================================================\n');
+fprintf('Raw-data simulation time       : %.3f s\n', simulationTime);
+fprintf('Range-compression time         : %.3f s\n', rangeCompressionTime);
+fprintf('RMA processing time            : %.3f s\n', rmaTime);
+fprintf('BPA processing time            : %.3f s\n', bpaTime);
+fprintf('Results saved to               : %s\n', resultsFolder);
+fprintf('============================================================\n\n');
+
+disp('RMA Target Localization Results');
+disp(rmaDetectionTable);
+
+disp('BPA Target Localization Results');
+disp(bpaDetectionTable);
